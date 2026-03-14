@@ -1,59 +1,107 @@
 {
-  "C_Cpp_Runner.cCompilerPath": "gcc",
-  "C_Cpp_Runner.cppCompilerPath": "g++",
-  "C_Cpp_Runner.debuggerPath": "gdb",
-  "C_Cpp_Runner.cStandard": "",
-  "C_Cpp_Runner.cppStandard": "",
-  "C_Cpp_Runner.msvcBatchPath": "C:/Program Files/Microsoft Visual Studio/VR_NR/Community/VC/Auxiliary/Build/vcvarsall.bat",
+  // ==========================================
+  // 1. 에디터 UI 및 기본 설정
+  // ==========================================
+  "editor.mouseWheelZoom": true,
+  "editor.insertSpaces": false,
+  "editor.acceptSuggestionOnEnter": "off",
+  "editor.fontFamily": "'Fira Code'",
+  "editor.fontLigatures": false,
+  "editor.comments.insertSpace": false,
+  "explorer.confirmDelete": false,
+  "security.workspace.trust.untrustedFiles": "open",
+  "update.showReleaseNotes": false,
+
+  // ==========================================
+  // 2. 디버깅 및 터미널
+  // ==========================================
+  "debug.console.acceptSuggestionOnEnter": "on",
+  "debug.allowBreakpointsEverywhere": true,
+  "code-runner.runInTerminal": true,
+  "terminal.integrated.commandsToSkipShell": [
+    "matlab.interrupt"
+  ],
+
+  // ==========================================
+  // 3. 파일 확장자 연결
+  // ==========================================
+  "files.associations": {
+    "glcd.h": "c",
+    "*.v": "verilog",
+    "*.vh": "verilog",
+    "*.cpp": "cpp",
+    "*.ioc": "plaintext"
+  },
+
+  // ==========================================
+  // 4. Git, Copilot, 확장 프로그램(CodeSnap)
+  // ==========================================
+  "git.autofetch": true,
+  "git.enableSmartCommit": true,
+  "git.confirmSync": false,
+  "github.copilot.enable": {
+    "*": false,
+    "plaintext": false,
+    "markdown": false,
+    "scminput": false,
+    "verilog": false
+  },
+  "gitlens.ai.model": "vscode",
+  "gitlens.ai.vscode.model": "copilot:gpt-4.1",
+  "codesnap.roundedCorners": false,
+  "codesnap.showWindowControls": false,
+  "codesnap.boxShadow": "rgba(0, 0, 0, 0) 0px 0px 0px",
+  "codesnap.backgroundColor": "#0d1117",
+
+  // ==========================================
+  // 5. Python 설정
+  // ==========================================
+  "python-envs.defaultEnvManager": "ms-python.python:system",
+
+  // ==========================================
+  // 6. Verilog 설정 (Vivado 린터 사용)
+  // ==========================================
+  "verilog.linting.linter": "xvlog",
+  "[verilog]": {
+    "editor.completionItemKindFontFamily": "default"
+  },
+
+  // ==========================================
+  // 7. C/C++ 및 STM32 임베디드 설정
+  // ==========================================
+  "C_Cpp.default.compilerPath": "",
+  "C_Cpp.intelliSenseEngine": "disabled",
+  "clangd.path": "c:\\Users\\hwang\\AppData\\Roaming\\Code\\User\\globalStorage\\llvm-vs-code-extensions.vscode-clangd\\install\\21.1.8\\clangd_21.1.8\\bin\\clangd.exe",
+  
+  "cmake.cmakePath": "cube-cmake",
+  "cmake.configureArgs": ["-DCMAKE_COMMAND=cube-cmake"],
+  "cmake.preferredGenerators": ["Ninja"],
+  "cmake.environment": {
+    "PATH": "c:/Users/hwang/.vscode/extensions/stmicroelectronics.stm32cube-ide-build-cmake-1.44.0-win32-x64/resources/cube-cmake/win32/x86_64;c:\\Users\\hwang\\.vscode\\extensions\\stmicroelectronics.stm32cube-ide-core-1.2.0-win32-x64\\resources\\binaries\\win32\\x86_64;${env.PATH}"
+  },
+
+  "stm32cube-ide-core.configuration.productSTM32CubeMX.executablePath": "C:\\Users\\hwang\\AppData\\Local\\Programs\\STM32CubeMX\\STM32CubeMX.exe",
+  "stm32cube-ide-clangd.path": "cube",
+  "stm32cube-ide-clangd.arguments": [
+    "starm-clangd",
+    "--query-driver=${env:CUBE_BUNDLE_PATH}/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-gcc.exe",
+    "--query-driver=${env:CUBE_BUNDLE_PATH}/gnu-tools-for-stm32/14.3.1+st.2/bin/arm-none-eabi-g++.exe"
+  ],
+  "workbench.settings.applyToAllProfiles": [
+    "stm32cube-ide-core.configuration.productSTM32CubeMX.executablePath"
+  ],
+
+  // ==========================================
+  // 8. C_Cpp_Runner 간소화 설정
+  // ==========================================
+  "C_Cpp_Runner.cCompilerPath": "C:/mingw64/bin/gcc.exe",
+  "C_Cpp_Runner.cppCompilerPath": "C:/mingw64/bin/g++.exe",
+  "C_Cpp_Runner.debuggerPath": "C:/mingw64/bin/gdb.exe",
   "C_Cpp_Runner.useMsvc": false,
-  "C_Cpp_Runner.warnings": [
-    "-Wall",
-    "-Wextra",
-    "-Wpedantic",
-    "-Wshadow",
-    "-Wformat=2",
-    "-Wcast-align",
-    "-Wconversion",
-    "-Wsign-conversion",
-    "-Wnull-dereference"
-  ],
-  "C_Cpp_Runner.msvcWarnings": [
-    "/W4",
-    "/permissive-",
-    "/w14242",
-    "/w14287",
-    "/w14296",
-    "/w14311",
-    "/w14826",
-    "/w44062",
-    "/w44242",
-    "/w14905",
-    "/w14906",
-    "/w14263",
-    "/w44265",
-    "/w14928"
-  ],
   "C_Cpp_Runner.enableWarnings": true,
   "C_Cpp_Runner.warningsAsError": false,
-  "C_Cpp_Runner.compilerArgs": [],
-  "C_Cpp_Runner.linkerArgs": [],
-  "C_Cpp_Runner.includePaths": [],
-  "C_Cpp_Runner.includeSearch": [
-    "*",
-    "**/*"
-  ],
-  "C_Cpp_Runner.excludeSearch": [
-    "**/build",
-    "**/build/**",
-    "**/.*",
-    "**/.*/**",
-    "**/.vscode",
-    "**/.vscode/**"
-  ],
-  "C_Cpp_Runner.useAddressSanitizer": false,
-  "C_Cpp_Runner.useUndefinedSanitizer": false,
-  "C_Cpp_Runner.useLeakSanitizer": false,
-  "C_Cpp_Runner.showCompilationTime": false,
-  "C_Cpp_Runner.useLinkTimeOptimization": false,
-  "C_Cpp_Runner.msvcSecureNoWarnings": false
+  "C_Cpp_Runner.warnings": [
+    "-Wall", "-Wextra", "-Wpedantic", "-Wshadow", "-Wformat=2",
+    "-Wcast-align", "-Wconversion", "-Wsign-conversion", "-Wnull-dereference"
+  ]
 }

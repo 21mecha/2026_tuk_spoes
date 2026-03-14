@@ -1,0 +1,53 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "C: 현재 파일만 빌드 (단일 알고리즘용)",
+      "type": "shell",
+      "command": "gcc",
+      "args": [
+        "-g",
+        "${file}",
+        "-Wall",
+        "-o",
+        "${fileDirname}\\${fileBasenameNoExtension}.exe"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$gcc"],
+      "detail": "현재 띄워둔 파일 하나만 컴파일하여 똑같은 이름의 exe로 만듭니다. (예: main.c -> main.exe)"
+    },
+    {
+      "label": "build c",
+      "type": "shell",
+      "command": "gcc",
+      "args": [
+        "-g",
+        "${workspaceFolder}\\*.c",
+        "-Wall",
+        "-o",
+        "${workspaceFolder}\\app.exe"
+      ],
+      "group": "build",
+      "problemMatcher": ["$gcc"],
+      "detail": "폴더 내 모든 C파일을 app.exe로 합쳐서 빌드합니다. (launch.json 디버깅 연동용)"
+    },
+    {
+      "label": "C++: 현재 파일만 빌드",
+      "type": "shell",
+      "command": "g++",
+      "args": [
+        "-g",
+        "${file}",
+        "-Wall",
+        "-o",
+        "${fileDirname}\\${fileBasenameNoExtension}.exe"
+      ],
+      "group": "build",
+      "problemMatcher": ["$gcc"],
+      "detail": "C++(.cpp) 파일을 컴파일할 때 사용합니다."
+    }
+  ]
+}
