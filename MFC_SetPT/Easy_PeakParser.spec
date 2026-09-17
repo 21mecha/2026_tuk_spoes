@@ -6,7 +6,7 @@ datas += collect_data_files('tkinterdnd2')
 
 
 a = Analysis(
-    ['mfc_parser.py'],
+    ['Easy_PeakParser.py'],
     pathex=[],
     binaries=[],
     datas=datas,
@@ -26,7 +26,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='mfc_parser',
+    name='Easy_PeakParser',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
