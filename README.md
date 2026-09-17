@@ -2,6 +2,8 @@
 <img width="1920" height="1080" alt="스크린샷 2026-09-17 171521" src="https://github.com/user-attachments/assets/dcf7fae2-61a4-4fe1-87dc-607a33bbd2e4" />
 < 프로그램 사용 스크린샷 >
 
+
+
 🚀 Easy_PeakParser
 Easy_PeakParser는 독립적으로 측정된 MFC(질량유량제어기) 유량 제어 로그와 분광기 피크(Peak) 파장 데이터를 시간(Time) 기반으로 완벽하게 동기화하고, 분석에 최적화된 엑셀 파일로 자동 가공해 주는 강력한 올인원(All-in-One) 데이터 전처리 툴입니다.
 
