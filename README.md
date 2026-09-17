@@ -21,7 +21,7 @@ Easy_PeakParser는 독립적으로 측정된 MFC(질량유량제어기) 유량 �
 
 1. 프로그램 실행
 
-폴더 내에 있는 Easy_PeakParser.exe 파일을 더블 클릭하여 실행합니다.
+MFC_SetPT 폴더를 다운로드하고, 폴더 내에 있는 Easy_PeakParser.exe 파일을 더블 클릭하여 실행합니다.
 
 2. 파일 추가 (Drag & Drop 지원)
 
