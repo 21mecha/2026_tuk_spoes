@@ -400,7 +400,7 @@ def clear_all():
 # GitHub 링크 오픈 함수
 # ================================
 def open_github(event):
-    webbrowser.open_new("https://github.com/21mecha/Easy_PeakParser")
+    webbrowser.open_new("https://github.com/hwang4826/Easy_PeakParser")
 
 # ================================
 # GUI 화면 구성 (TUK Blue Theme 적용 및 크기 5:5 고정)
