@@ -1,0 +1,29 @@
+# 1. Python 컴파일 및 캐시 파일 (사진에 있는 localpycs 폴더 및 .pyc 포함)
+__pycache__
+.py[cod]
+$py.class
+localpycs
+
+# 2. PyInstaller 빌드 찌꺼기 파일 (사진에 있는 각종 임시 파일들)
+build
+dist
+.spec
+.toc
+.pkg
+.pyz
+warn-.txt
+xref-.html
+base_library.zip
+
+# 3. 실행 파일 (.exe 파일은 소스코드가 아니므로 무시)
+.exe
+
+# 4. 가상 환경 (Virtual Environments - 범용 설정)
+venv
+.venv
+env
+.env
+
+# 5. OS 시스템 자동 생성 파일 (범용 설정)
+.DS_Store
+Thumbs.db

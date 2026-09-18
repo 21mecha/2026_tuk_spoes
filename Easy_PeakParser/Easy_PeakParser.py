@@ -2,6 +2,7 @@ import os
 import sys
 import csv
 import webbrowser
+import ctypes
 from datetime import datetime, timedelta
 import tkinter as tk
 from tkinter import filedialog, messagebox
@@ -10,20 +11,27 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
-mfc_files = []
-peak_files = []
+# ================================
+# 작업 표시줄 아이콘 고정 버그 해결 (Windows 전용)
+# ================================
+try:
+    myappid = 'tuk.mecha.easy_peakparser.v1'
+    ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+except:
+    pass
 
 # ================================
-# PyInstaller 임시 폴더 경로 추적 함수 추가
+# PyInstaller 임시 폴더 경로 추적 함수
 # ================================
 def resource_path(relative_path):
-    """ Get absolute path to resource, works for dev and for PyInstaller """
     try:
-        # PyInstaller가 만든 임시 폴더 경로
         base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
     return os.path.join(base_path, relative_path)
+
+mfc_files = []
+peak_files = []
 
 # ================================
 # 시간 포맷 정밀 파싱 함수
@@ -395,7 +403,7 @@ def open_github(event):
     webbrowser.open_new("https://github.com/21mecha/2026_tuk_spoes")
 
 # ================================
-# GUI 화면 구성 (TUK Blue Theme 적용)
+# GUI 화면 구성 (TUK Blue Theme 적용 및 크기 5:5 고정)
 # ================================
 # 테마 색상표 정의
 THEME_BG = "#F0F6FA"           
@@ -410,14 +418,21 @@ root = TkinterDnD.Tk()
 root.title("Easy_PeakParser v1.0.0")
 root.geometry("720x580") 
 root.iconbitmap(resource_path("Easy_PeakParser.ico"))
-root.configure(bg=THEME_BG)
+root.configure(bg=THEME_BG) 
 
+# 파일 목록 프레임 창 크기 조절 시 동적 확장 적용
 frame_lists = tk.Frame(root, bg=THEME_BG)
-frame_lists.pack(pady=10, padx=10, fill="x")
+frame_lists.pack(pady=10, padx=10, fill="both", expand=True)
+
+# 5:5 정확한 대칭을 위해 Grid 레이아웃 적용
+frame_lists.columnconfigure(0, weight=1, uniform="equal_width")
+frame_lists.columnconfigure(1, weight=1, uniform="equal_width")
+frame_lists.rowconfigure(0, weight=1)
 
 # [1. MFC 셋포인트 영역]
 frame_mfc = tk.LabelFrame(frame_lists, text="1. MFC 유량 제어 기록 파일 (*.csv)", bg=THEME_BG, fg=THEME_ACCENT, font=("", 10, "bold"), padx=5, pady=5)
-frame_mfc.pack(side="left", fill="both", expand=True, padx=5)
+frame_mfc.grid(row=0, column=0, sticky="nsew", padx=5)
+
 listbox_mfc = tk.Listbox(frame_mfc, selectmode=tk.EXTENDED, height=10, relief="solid", bd=1, selectbackground=THEME_ACTION)
 listbox_mfc.pack(fill="both", expand=True, pady=(0, 5))
 listbox_mfc.drop_target_register(DND_FILES)
@@ -430,7 +445,8 @@ tk.Button(btn_frame_mfc, text="Remove", command=remove_mfc, bg=THEME_BTN, fg=THE
 
 # [2. 파장 기록 영역]
 frame_peak = tk.LabelFrame(frame_lists, text="2. 파장 기록 파일 (*.csv)", bg=THEME_BG, fg=THEME_ACCENT, font=("", 10, "bold"), padx=5, pady=5)
-frame_peak.pack(side="left", fill="both", expand=True, padx=5)
+frame_peak.grid(row=0, column=1, sticky="nsew", padx=5)
+
 listbox_peak = tk.Listbox(frame_peak, selectmode=tk.EXTENDED, height=10, relief="solid", bd=1, selectbackground=THEME_ACTION)
 listbox_peak.pack(fill="both", expand=True, pady=(0, 5))
 listbox_peak.drop_target_register(DND_FILES)
@@ -446,7 +462,7 @@ frame_bot = tk.Frame(root, bg=THEME_BG)
 frame_bot.pack(fill="x", padx=15)
 tk.Button(frame_bot, text="Clear All Files", command=clear_all, width=15, bg="#EAECEE", fg="#5D6D7E", activebackground="#D5D8DC", relief="flat", cursor="hand2", font=("", 9, "bold")).pack(side="right", pady=5)
 
-# [저장 설정 영역] - 문구 축소 반영
+# [저장 설정 영역]
 setting_frame = tk.LabelFrame(root, text="저장 설정", bg=THEME_BG, fg=THEME_ACCENT, font=("", 10, "bold"), padx=10, pady=10)
 setting_frame.pack(pady=5, fill="x", padx=15)
 
@@ -456,7 +472,6 @@ chk.grid(row=0, column=0, columnspan=2, sticky="w")
 
 tk.Label(setting_frame, text="파일명 :", bg=THEME_BG).grid(row=1, column=0, sticky="w", pady=5)
 entry_filename = tk.Entry(setting_frame, width=32, relief="solid", bd=1)
-# 기본 텍스트 비우기 처리 반영
 entry_filename.grid(row=1, column=1, sticky="w", padx=5)
 tk.Label(setting_frame, text="※ 비워둘 시 기본값(yyMMdd_HHmm_가스정보) 자동 적용", fg="#7F8C8D", bg=THEME_BG, font=("", 9)).grid(row=2, column=0, columnspan=2, sticky="w", padx=5)
 
