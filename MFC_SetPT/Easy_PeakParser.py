@@ -1,14 +1,29 @@
 import os
+import sys
 import csv
+import webbrowser
 from datetime import datetime, timedelta
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinterdnd2 import TkinterDnD, DND_FILES
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
 
 mfc_files = []
 peak_files = []
+
+# ================================
+# PyInstaller 임시 폴더 경로 추적 함수 추가
+# ================================
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller가 만든 임시 폴더 경로
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 # ================================
 # 시간 포맷 정밀 파싱 함수
@@ -40,7 +55,6 @@ def parse_peak_time(t_str):
         pass
     return None
 
-# [수정됨] base_time 매개변수를 추가하여 현재 시간이 아닌 '측정 시간'을 기준으로 변환
 def get_formatted_filename(pattern, base_time=None):
     if base_time is None:
         base_time = datetime.now()
@@ -55,7 +69,7 @@ def get_formatted_filename(pattern, base_time=None):
     return res
 
 # ================================
-# MFC 데이터 추출기 (Raw & 정리본 겸용)
+# MFC 데이터 추출기
 # ================================
 def extract_mfc_events(filepath):
     events = []
@@ -123,44 +137,10 @@ def extract_mfc_events(filepath):
 # 핵심 메인 프로세스
 # ================================
 def process_data():
-    if not mfc_files and not peak_files:
-        messagebox.showwarning("경고", "처리할 파일을 먼저 추가해주세요.")
-        return
-    if not mfc_files and peak_files:
-        messagebox.showerror("에러", "파장(Peak) 파일 단독 처리는 불가합니다.\n왼쪽 목록에 MFC 기준 파일을 반드시 추가해주세요.")
+    if not mfc_files or not peak_files:
+        messagebox.showerror("에러", "MFC 유량 제어 기록 파일과 파장 기록 파일이 모두 입력되어야 합니다.")
         return
 
-    # [1] MFC 데이터만 있는 경우
-    if mfc_files and not peak_files:
-        all_events = []
-        for f in mfc_files:
-            all_events.extend(extract_mfc_events(f))
-        
-        if not all_events:
-            messagebox.showerror("에러", "유효한 MFC 이벤트 데이터가 없습니다.")
-            return
-
-        all_events.sort(key=lambda x: x['time'])
-        
-        # [수정됨] 저장창을 띄우기 전에 전체 데이터의 '가장 첫 시간'을 뽑아서 파일명 생성
-        start_time = all_events[0]['time']
-        raw_pattern = entry_filename.get()
-        prefix = get_formatted_filename(raw_pattern, start_time) if use_time_format_var.get() else raw_pattern
-        default_name = f"{prefix}_mfc_setpt.xlsx"
-
-        save_path = filedialog.asksaveasfilename(title="MFC 정리결과 저장", defaultextension=".xlsx", initialfile=default_name, filetypes=[("Excel files", "*.xlsx")])
-        if not save_path: return
-        
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.append(['Time', 'BG_Gas', 'BG_Flow', 'Ctrl_Gas', 'Prev_Flow', 'Curr_Flow'])
-        for e in all_events:
-            ws.append([e['time'].strftime("%y%m%d %H:%M:%S.%f")[:-3], e['bg_gas'], e['bg_flow'], e['ctrl_gas'], e['prev_flow'], e['curr_flow']])
-        wb.save(save_path)
-        messagebox.showinfo("완료", "MFC 단독 정리가 완료되었습니다.")
-        return
-
-    # [2] 올인원 매칭 모드 (Peak 파일 병합)
     output_dir = filedialog.askdirectory(title="파장 데이터 변환 결과를 각각 저장할 '폴더'를 선택하세요")
     if not output_dir: return
 
@@ -193,8 +173,11 @@ def process_data():
                 else:
                     if not line.startswith("Timestamp"):
                         parts = line.split(',')
-                        dt = parse_peak_time(parts[0])
-                        if dt: data_rows.append({'dt': dt, 'raw': parts})
+                        if len(parts) >= 2:
+                            dt = parse_peak_time(parts[0])
+                            if dt:
+                                clean_raw = parts[:2 + len(headers_info)]
+                                data_rows.append({'dt': dt, 'raw': clean_raw})
         
         if not data_rows:
             fail_list.append(f"{os.path.basename(peak_file)} (데이터 없음)")
@@ -203,15 +186,11 @@ def process_data():
         start_dt = data_rows[0]['dt']
         end_dt = data_rows[-1]['dt']
         
-        # [수정됨] 파일별 실제 측정 시작 시간(start_dt)을 기반으로 파일명 생성
-        raw_pattern = entry_filename.get()
-        prefix = get_formatted_filename(raw_pattern, start_dt) if use_time_format_var.get() else raw_pattern
-        
         tolerance = timedelta(minutes=5)
         matched_events = [e for e in all_events if (start_dt - tolerance) <= e['time'] <= (end_dt + tolerance)]
         
         if not matched_events:
-            fail_list.append(f"{os.path.basename(peak_file)} (시간대(날짜 포함)가 일치하는 MFC 기록 없음)")
+            fail_list.append(f"{os.path.basename(peak_file)} (시간대가 일치하는 MFC 기록 없음)")
             continue
 
         blocks_to_write = []
@@ -247,31 +226,62 @@ def process_data():
             continue
 
         bg_gas = matched_events[0]['bg_gas']
-        bg_flow = int(matched_events[0]['bg_flow'])
+        bg_flow = matched_events[0]['bg_flow']
         ctrl_gas = matched_events[0]['ctrl_gas']
         max_ctrl = max(max(e['prev_flow'], e['curr_flow']) for e in matched_events)
         deltas = [abs(e['curr_flow'] - e['prev_flow']) for e in matched_events if abs(e['curr_flow'] - e['prev_flow']) > 0]
         delta_val = max(set(deltas), key=deltas.count) if deltas else 0
         delta_str = int(delta_val) if delta_val.is_integer() else delta_val
+        
+        bg_flow_str = int(bg_flow) if bg_flow.is_integer() else bg_flow
+        max_ctrl_str = int(max_ctrl) if max_ctrl.is_integer() else max_ctrl
 
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Peak Data"
 
-        ws['B1'] = f"배경가스 {bg_gas} {bg_flow} sccm + 변화가스 {ctrl_gas} 0~{int(max_ctrl)} sccm(Δ{delta_str} sccm)"
+        ws['B1'] = f"배경가스 {bg_gas} {bg_flow_str} sccm + 제어가스 {ctrl_gas} 0~{max_ctrl_str} sccm(Δ{delta_str} sccm)"
         ws['B1'].font = Font(size=15, bold=True)
-        ws.merge_cells('B1:G1')
+        ws.merge_cells('B1:H1')
         ws['B1'].alignment = Alignment(horizontal="left", vertical="center")
-        ws['H1'], ws['I1'] = "측정일 :", start_dt.strftime("%y%m%d")
-        ws['J1'], ws['K1'] = "수정일 :", datetime.now().strftime("%y%m%d")
+        
         ws['B2'] = "[Data]"
+        ws['D2'], ws['E2'] = "측정일 :", start_dt.strftime("%y%m%d")
+        ws['F2'], ws['G2'] = "수정일 :", datetime.now().strftime("%y%m%d")
+        
+        for cell_ref in ['D2', 'E2', 'F2', 'G2']:
+            ws[cell_ref].alignment = Alignment(horizontal="center", vertical="center")
+            ws[cell_ref].font = Font(bold=True)
+
         ws.append(["", "Timestamp", "No"] + headers_info)
 
-        yellow_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")
-        red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+        palette_1 = {
+            'normal': PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid"),
+            'event': PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid"),
+            'font_event': Font(color="FFFFFF", bold=True)
+        }
+        palette_2 = {
+            'normal': PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid"),
+            'event': PatternFill(start_color="F8CBAD", end_color="F8CBAD", fill_type="solid"),
+            'font_event': Font(color="000000", bold=True)
+        }
+        
         font_bold = Font(bold=True)
-        font_white = Font(color="FFFFFF", bold=True)
         center_align = Alignment(horizontal="center", vertical="center")
+
+        col_palettes = {}
+        col_palettes[1] = col_palettes[2] = col_palettes[3] = palette_1 
+        
+        current_pal_idx = 2 
+        prev_el = None
+        
+        for i, header in enumerate(headers_info):
+            col_idx = 4 + i
+            el = header.split(' / ')[1].strip() if ' / ' in header else ""
+            if prev_el is not None and el != prev_el:
+                current_pal_idx = 1 if current_pal_idx == 2 else 2
+            prev_el = el
+            col_palettes[col_idx] = palette_1 if current_pal_idx == 1 else palette_2
 
         current_row = 4
         for b_dict in blocks_to_write:
@@ -280,30 +290,52 @@ def process_data():
             
             for i, b_row in enumerate(block):
                 is_red = (i == len(block) - 1)
-                row_data = [label if i == 0 else ""] + b_row['raw']
+                row_label = "유량 변경" if is_red else (label if i == 0 else "")
+                
+                formatted_ts = b_row['dt'].strftime("%y%m%d %H:%M:%S.%f")[:-3]
+                clean_raw = [formatted_ts, b_row['raw'][1]] + b_row['raw'][2:]
+                
+                row_data = [row_label] + clean_raw
                 ws.append(row_data)
 
                 for col_idx in range(1, len(row_data) + 1):
                     cell = ws.cell(row=current_row, column=col_idx)
                     cell.alignment = center_align
+                    
+                    pal = col_palettes.get(col_idx, palette_1)
+                    
                     if is_red:
-                        cell.fill = red_fill
-                        cell.font = font_white
+                        cell.fill = pal['event']
+                        cell.font = pal['font_event']
                     else:
-                        cell.fill = yellow_fill
+                        cell.fill = pal['normal']
                         if col_idx == 1: cell.font = font_bold
                 current_row += 1
 
         ws.column_dimensions['A'].width = 15
-        ws.column_dimensions['B'].width = 25
-        ws.freeze_panes = 'B4' 
+        ws.column_dimensions['B'].width = 21
+        ws.column_dimensions['C'].width = 6
+        for col_idx in range(4, 4 + len(headers_info)):
+            col_letter = get_column_letter(col_idx)
+            ws.column_dimensions[col_letter].width = 13
+            
+        ws.freeze_panes = 'D4' 
 
-        # [수정됨] 파일명 덮어쓰기 방지 안전망 추가
-        base_save_name = f"{prefix}_peak_{bg_gas}_{int(bg_flow)}_{ctrl_gas}_{int(max_ctrl)}.xlsx"
-        save_name = base_save_name
+        raw_pattern = entry_filename.get().strip()
+        if not raw_pattern:
+            raw_pattern = "yyMMdd_HHmm"
+            
+        prefix = get_formatted_filename(raw_pattern, start_dt) if use_time_format_var.get() else raw_pattern
+        
+        if bg_gas == 'Ar':
+            gas_suffix = f"Ar_B{bg_flow_str}_N2_C{max_ctrl_str}"
+        else:
+            gas_suffix = f"Ar_C{max_ctrl_str}_N2_B{bg_flow_str}"
+            
+        save_name = f"{prefix}_{gas_suffix}.xlsx"
         counter = 1
         while os.path.exists(os.path.join(output_dir, save_name)):
-            save_name = base_save_name.replace(".xlsx", f"_{counter}.xlsx")
+            save_name = f"{prefix}_{gas_suffix}_{counter}.xlsx"
             counter += 1
             
         wb.save(os.path.join(output_dir, save_name))
@@ -326,7 +358,7 @@ def update_lists():
 
 def drop_mfc(event):
     for p in root.tk.splitlist(event.data):
-        if p not in mfc_files: mfc_files.append(p)
+        if p.lower().endswith('.csv') and p not in mfc_files: mfc_files.append(p)
     update_lists()
 
 def drop_peak(event):
@@ -335,7 +367,7 @@ def drop_peak(event):
     update_lists()
 
 def browse_mfc():
-    for p in filedialog.askopenfilenames(title="MFC 파일 선택"):
+    for p in filedialog.askopenfilenames(title="MFC 파일 선택", filetypes=[("CSV", "*.csv")]):
         if p not in mfc_files: mfc_files.append(p)
     update_lists()
 
@@ -357,54 +389,90 @@ def clear_all():
     update_lists()
 
 # ================================
-# GUI 화면 구성
+# GitHub 링크 오픈 함수
 # ================================
-root = TkinterDnD.Tk()
-root.title("MFC & Peak All-in-One Extractor")
-root.geometry("700x550")
+def open_github(event):
+    webbrowser.open_new("https://github.com/21mecha/2026_tuk_spoes")
 
-frame_lists = tk.Frame(root)
+# ================================
+# GUI 화면 구성 (TUK Blue Theme 적용)
+# ================================
+# 테마 색상표 정의
+THEME_BG = "#F0F6FA"           
+THEME_FRAME_BG = "#FFFFFF"     
+THEME_ACCENT = "#005BAA"       
+THEME_BTN = "#D4E6F1"          
+THEME_BTN_ACTIVE = "#A9CCE3"   
+THEME_ACTION = "#0078D7"       
+THEME_ACTION_ACTIVE = "#005A9E" 
+
+root = TkinterDnD.Tk()
+root.title("Easy_PeakParser v1.0.0")
+root.geometry("720x580") 
+root.iconbitmap(resource_path("Easy_PeakParser.ico"))
+root.configure(bg=THEME_BG)
+
+frame_lists = tk.Frame(root, bg=THEME_BG)
 frame_lists.pack(pady=10, padx=10, fill="x")
 
-frame_mfc = tk.LabelFrame(frame_lists, text="1. MFC 유량 파일 (Raw 또는 Summary)", padx=5, pady=5)
+# [1. MFC 셋포인트 영역]
+frame_mfc = tk.LabelFrame(frame_lists, text="1. MFC 유량 제어 기록 파일 (*.csv)", bg=THEME_BG, fg=THEME_ACCENT, font=("", 10, "bold"), padx=5, pady=5)
 frame_mfc.pack(side="left", fill="both", expand=True, padx=5)
-listbox_mfc = tk.Listbox(frame_mfc, selectmode=tk.EXTENDED, height=10)
-listbox_mfc.pack(fill="both", expand=True)
+listbox_mfc = tk.Listbox(frame_mfc, selectmode=tk.EXTENDED, height=10, relief="solid", bd=1, selectbackground=THEME_ACTION)
+listbox_mfc.pack(fill="both", expand=True, pady=(0, 5))
 listbox_mfc.drop_target_register(DND_FILES)
 listbox_mfc.dnd_bind('<<Drop>>', drop_mfc)
 
-btn_frame_mfc = tk.Frame(frame_mfc)
-btn_frame_mfc.pack(fill="x", pady=5)
-tk.Button(btn_frame_mfc, text="Browse", command=browse_mfc).pack(side="left", expand=True, fill="x", padx=2)
-tk.Button(btn_frame_mfc, text="Remove", command=remove_mfc).pack(side="left", expand=True, fill="x", padx=2)
+btn_frame_mfc = tk.Frame(frame_mfc, bg=THEME_BG)
+btn_frame_mfc.pack(fill="x")
+tk.Button(btn_frame_mfc, text="Browse", command=browse_mfc, bg=THEME_BTN, fg=THEME_ACCENT, activebackground=THEME_BTN_ACTIVE, relief="flat", cursor="hand2", font=("", 9, "bold")).pack(side="left", expand=True, fill="x", padx=2)
+tk.Button(btn_frame_mfc, text="Remove", command=remove_mfc, bg=THEME_BTN, fg=THEME_ACCENT, activebackground=THEME_BTN_ACTIVE, relief="flat", cursor="hand2", font=("", 9, "bold")).pack(side="left", expand=True, fill="x", padx=2)
 
-frame_peak = tk.LabelFrame(frame_lists, text="2. 파장 기록 파일 (Peak CSV)", padx=5, pady=5)
+# [2. 파장 기록 영역]
+frame_peak = tk.LabelFrame(frame_lists, text="2. 파장 기록 파일 (*.csv)", bg=THEME_BG, fg=THEME_ACCENT, font=("", 10, "bold"), padx=5, pady=5)
 frame_peak.pack(side="left", fill="both", expand=True, padx=5)
-listbox_peak = tk.Listbox(frame_peak, selectmode=tk.EXTENDED, height=10)
-listbox_peak.pack(fill="both", expand=True)
+listbox_peak = tk.Listbox(frame_peak, selectmode=tk.EXTENDED, height=10, relief="solid", bd=1, selectbackground=THEME_ACTION)
+listbox_peak.pack(fill="both", expand=True, pady=(0, 5))
 listbox_peak.drop_target_register(DND_FILES)
 listbox_peak.dnd_bind('<<Drop>>', drop_peak)
 
-btn_frame_peak = tk.Frame(frame_peak)
-btn_frame_peak.pack(fill="x", pady=5)
-tk.Button(btn_frame_peak, text="Browse", command=browse_peak).pack(side="left", expand=True, fill="x", padx=2)
-tk.Button(btn_frame_peak, text="Remove", command=remove_peak).pack(side="left", expand=True, fill="x", padx=2)
+btn_frame_peak = tk.Frame(frame_peak, bg=THEME_BG)
+btn_frame_peak.pack(fill="x")
+tk.Button(btn_frame_peak, text="Browse", command=browse_peak, bg=THEME_BTN, fg=THEME_ACCENT, activebackground=THEME_BTN_ACTIVE, relief="flat", cursor="hand2", font=("", 9, "bold")).pack(side="left", expand=True, fill="x", padx=2)
+tk.Button(btn_frame_peak, text="Remove", command=remove_peak, bg=THEME_BTN, fg=THEME_ACCENT, activebackground=THEME_BTN_ACTIVE, relief="flat", cursor="hand2", font=("", 9, "bold")).pack(side="left", expand=True, fill="x", padx=2)
 
-frame_bot = tk.Frame(root)
+# [초기화 버튼 영역]
+frame_bot = tk.Frame(root, bg=THEME_BG)
 frame_bot.pack(fill="x", padx=15)
+tk.Button(frame_bot, text="Clear All Files", command=clear_all, width=15, bg="#EAECEE", fg="#5D6D7E", activebackground="#D5D8DC", relief="flat", cursor="hand2", font=("", 9, "bold")).pack(side="right", pady=5)
 
-tk.Button(frame_bot, text="Clear All Files", command=clear_all, width=15).pack(side="right", pady=5)
-
-setting_frame = tk.LabelFrame(root, text="저장 설정 (Peak 출력 시 폴더에 다중 저장됨)", padx=10, pady=10)
+# [저장 설정 영역] - 문구 축소 반영
+setting_frame = tk.LabelFrame(root, text="저장 설정", bg=THEME_BG, fg=THEME_ACCENT, font=("", 10, "bold"), padx=10, pady=10)
 setting_frame.pack(pady=5, fill="x", padx=15)
 
 use_time_format_var = tk.BooleanVar(value=True)
-tk.Checkbutton(setting_frame, text="파일명에 시간 자동 변환 적용 (yyMMddHHmm 등)", variable=use_time_format_var).grid(row=0, column=0, columnspan=2, sticky="w")
-tk.Label(setting_frame, text="파일명 접두사:").grid(row=1, column=0, sticky="w", pady=5)
-entry_filename = tk.Entry(setting_frame, width=30)
-entry_filename.insert(0, "yyMMddHHmm")
-entry_filename.grid(row=1, column=1, sticky="w", padx=5)
+chk = tk.Checkbutton(setting_frame, text="파일명에 시간 자동 변환 적용 (yyMMdd_HHmm 등)", variable=use_time_format_var, bg=THEME_BG, activebackground=THEME_BG, cursor="hand2")
+chk.grid(row=0, column=0, columnspan=2, sticky="w")
 
-tk.Button(root, text="Process & Save All", command=process_data, height=2, bg="#4CAF50", fg="white", font=("", 12, "bold")).pack(fill="x", padx=15, pady=10)
+tk.Label(setting_frame, text="파일명 :", bg=THEME_BG).grid(row=1, column=0, sticky="w", pady=5)
+entry_filename = tk.Entry(setting_frame, width=32, relief="solid", bd=1)
+# 기본 텍스트 비우기 처리 반영
+entry_filename.grid(row=1, column=1, sticky="w", padx=5)
+tk.Label(setting_frame, text="※ 비워둘 시 기본값(yyMMdd_HHmm_가스정보) 자동 적용", fg="#7F8C8D", bg=THEME_BG, font=("", 9)).grid(row=2, column=0, columnspan=2, sticky="w", padx=5)
+
+# [실행 버튼]
+btn_process = tk.Button(root, text="Process & Save All", command=process_data, height=2, bg=THEME_ACTION, fg="white", activebackground=THEME_ACTION_ACTIVE, activeforeground="white", relief="flat", cursor="hand2", font=("", 12, "bold"))
+btn_process.pack(fill="x", padx=15, pady=10)
+
+# [하단 푸터]
+footer_frame = tk.Frame(root, bg=THEME_BG)
+footer_frame.pack(side="bottom", fill="x", padx=15, pady=5)
+
+lbl_dev = tk.Label(footer_frame, text="한국공학대학교 메카트로닉스공학부 21학번 황영진", fg="#95A5A6", bg=THEME_BG, font=("", 8))
+lbl_dev.pack(side="bottom", anchor="e")
+
+lbl_github = tk.Label(footer_frame, text="GitHub Repo 🔗", fg=THEME_ACTION, bg=THEME_BG, cursor="hand2", font=("", 9, "underline"))
+lbl_github.pack(side="bottom", anchor="e", pady=(0, 2))
+lbl_github.bind("<Button-1>", open_github)
 
 root.mainloop()

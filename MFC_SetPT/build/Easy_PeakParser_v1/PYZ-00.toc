@@ -1,4 +1,4 @@
-('C:\\Users\\hwang\\Documents\\GitHub\\2026_tuk_spoes\\MFC_SetPT\\build\\Easy_PeakParser\\PYZ-00.pyz',
+('C:\\Users\\hwang\\Documents\\GitHub\\2026_tuk_spoes\\MFC_SetPT\\build\\Easy_PeakParser_v1\\PYZ-00.pyz',
  [('PIL',
    'C:\\Users\\hwang\\AppData\\Local\\Python\\pythoncore-3.14-64\\Lib\\site-packages\\PIL\\__init__.py',
    'PYMODULE'),

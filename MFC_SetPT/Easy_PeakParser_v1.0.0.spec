@@ -1,7 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_data_files
 
-datas = []
+datas = [('Easy_PeakParser.ico', '.')]
 datas += collect_data_files('tkinterdnd2')
 
 
@@ -26,7 +26,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='Easy_PeakParser',
+    name='Easy_PeakParser_v1.0.0',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -39,4 +39,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['Easy_PeakParser.ico'],
 )
